@@ -50,7 +50,7 @@ func CreateTask(taskData Data) *mongo.InsertOneResult {
 }
 
 func getNextUserID() int64 {
-	opts := options.FindOne().SetSort(bson.D{{"id", -1}})
+	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
 
 	var lastTask Data
 	err := collection.FindOne(context.TODO(), bson.D{}, opts).Decode(&lastTask)

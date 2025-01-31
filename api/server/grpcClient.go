@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/credentials/insecure"
 	"log"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 var client pb.UserServiceClient
 
 func ConnectGRpc() {
-	conn, err := grpc.Dial("localhost:8080", grpc.WithInsecure())
+	conn, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -33,7 +34,7 @@ func GetUserById(userId int64) *pb.GetUserResponse {
 		log.Fatalf("could not greet: %v", err)
 	}
 
-	fmt.Print("user received: ID=%s, Name=%s\n", res.GetUserId(), res.GetName())
+	fmt.Printf("user received: ID=%d, Name=%s\n", res.GetUserId(), res.GetName())
 
 	return res
 }
