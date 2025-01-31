@@ -1,6 +1,7 @@
 package main
 
 import (
+	"TaskService/api/grpc"
 	"TaskService/api/server"
 	"TaskService/internal/factory"
 )
@@ -8,5 +9,5 @@ import (
 func main() {
 	factory.ConnectToMongo()
 	server.StartServer()
-	server.ConnectGRpc()
+	grpc.ConnectGRpc()
 }

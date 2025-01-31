@@ -1,4 +1,4 @@
-package server
+package grpc
 
 import (
 	"context"
@@ -35,6 +35,16 @@ func GetUserById(userId int64) *pb.GetUserResponse {
 	}
 
 	fmt.Printf("user received: ID=%d, Name=%s\n", res.GetUserId(), res.GetName())
-
 	return res
+}
+
+func CheckUserId(userId int64) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	res, err := client.CheckUser(ctx, &pb.CheckUserRequest{UserId: userId})
+	if err != nil {
+		log.Fatalf("could not greet: %v", err)
+	}
+
+	return res.IsExists
 }

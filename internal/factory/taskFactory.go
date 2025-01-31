@@ -1,6 +1,7 @@
 package factory
 
 import (
+	"TaskService/api/grpc"
 	"context"
 	"fmt"
 	"go.mongodb.org/mongo-driver/bson"
@@ -28,17 +29,19 @@ func ConnectToMongo() {
 		log.Fatal(err)
 	}
 
-	err = client.Ping(context.TODO(), nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Println("Connected to MongoDB!", client)
+	fmt.Println("Connected to MongoDB!")
 	collection = client.Database("TasksService").Collection("tasks")
 }
 
 func CreateTask(taskData Data) *mongo.InsertOneResult {
-	taskData.Id = getNextUserID()
+
+	if !checkUserId(taskData.UserId) {
+
+		log.Fatal("User Not Found")
+		return nil
+	}
+
+	taskData.Id = getNextTaskID()
 	insertResult, err := collection.InsertOne(context.TODO(), taskData)
 	if err != nil {
 		log.Fatal(err)
@@ -49,7 +52,7 @@ func CreateTask(taskData Data) *mongo.InsertOneResult {
 	return insertResult
 }
 
-func getNextUserID() int64 {
+func getNextTaskID() int64 {
 	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
 
 	var lastTask Data
@@ -99,4 +102,9 @@ func GetAllTasks() []Data {
 	}
 
 	return result
+}
+
+func checkUserId(userId int64) bool {
+
+	return grpc.CheckUserId(userId)
 }
