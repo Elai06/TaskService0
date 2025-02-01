@@ -11,5 +11,9 @@ func main() {
 	env.LoadEnv()
 	repository.ConnectToMongo()
 	server.StartServer()
-	grpc.ConnectGrpc()
+	grpcErr := grpc.ConnectGrpc()
+
+	if grpcErr != nil {
+		print(grpcErr)
+	}
 }
