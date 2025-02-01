@@ -9,7 +9,7 @@ test:
 	go test ./...
 
 lint:
-	golangci-lint run
+	golangci-lint run --fix
 
 clean:
 	rm -f $(BINARY_NAME)

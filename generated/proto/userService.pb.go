@@ -22,9 +22,9 @@ const (
 )
 
 type GetUserRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserID int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Name   string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -61,7 +61,7 @@ func (*GetUserRequest) Descriptor() ([]byte, []int) {
 
 func (x *GetUserRequest) GetUserId() int64 {
 	if x != nil {
-		return x.UserId
+		return x.UserID
 	}
 	return 0
 }
@@ -171,7 +171,7 @@ func (x *CheckUserResponse) GetIsExists() bool {
 
 type CheckUserRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	UserId        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	UserID        int64                  `protobuf:"varint,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -208,7 +208,7 @@ func (*CheckUserRequest) Descriptor() ([]byte, []int) {
 
 func (x *CheckUserRequest) GetUserId() int64 {
 	if x != nil {
-		return x.UserId
+		return x.UserID
 	}
 	return 0
 }
