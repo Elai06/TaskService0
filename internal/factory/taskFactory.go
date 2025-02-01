@@ -69,38 +69,28 @@ func getNextTaskID() int64 {
 
 func GetTaskById(id int64) Data {
 	filter := map[string]interface{}{"id": id}
-
 	result := Data{}
 	err := collection.FindOne(context.TODO(), filter).Decode(&result)
-
 	if err != nil {
 		log.Fatal(err)
 		return Data{}
 	}
-
 	fmt.Printf("Found document: %+v\n", result)
-
 	return result
 }
 
 func GetAllTasks() []Data {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-
 	var result []Data
-
 	cursor, err := collection.Find(context.TODO(), bson.M{})
-
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	defer cursor.Close(ctx)
-
 	if err := cursor.All(ctx, &result); err != nil {
 		log.Fatal(err)
 	}
-
 	return result
 }
 
