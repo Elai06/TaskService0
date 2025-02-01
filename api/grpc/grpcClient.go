@@ -13,10 +13,10 @@ import (
 
 var client pb.UserServiceClient
 
-func ConnectGRpc() {
+func ConnectGrpc() {
 	conn, err := grpc.NewClient("localhost:8080", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+		log.Printf("did not connect: %v", err)
 	}
 
 	defer conn.Close()
@@ -27,24 +27,24 @@ func GetUserByID(userID int64) *pb.GetUserResponse {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	res, err := client.GetUser(ctx, &pb.GetUserRequest{UserID: userID})
+	user, err := client.GetUser(ctx, &pb.GetUserRequest{UserID: userID})
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		log.Printf("could not greet: %v", err)
 	}
 
-	fmt.Printf("user received: ID=%d, Name=%s\n", res.GetUserId(), res.GetName())
+	fmt.Printf("user received: ID=%d, Name=%s\n", user.GetUserId(), user.GetName())
 
-	return res
+	return user
 }
 
-func CheckUserID(userID int64) bool {
+func CheckUserID(userID int64) (bool, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	res, err := client.CheckUser(ctx, &pb.CheckUserRequest{UserID: userID})
+	user, err := client.CheckUser(ctx, &pb.CheckUserRequest{UserID: userID})
 	if err != nil {
-		log.Fatalf("could not greet: %v", err)
+		log.Printf("could not greet: %v", err)
 	}
 
-	return res.IsExists
+	return user.IsExists, err
 }

@@ -1,4 +1,4 @@
-package factory
+package repository
 
 import (
 	"context"
@@ -12,6 +12,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+const tasks = "tasks"
+const TasksService = "TasksService"
 
 var collection *mongo.Collection
 
@@ -28,57 +31,53 @@ func ConnectToMongo() {
 
 	client, err := mongo.Connect(context.TODO(), clientOptions)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return
 	}
 
 	fmt.Println("Connected to MongoDB!")
 
-	collection = client.Database("TasksService").Collection("tasks")
+	collection = client.Database(TasksService).Collection(tasks)
 }
 
-func CreateTask(taskData Data) *mongo.InsertOneResult {
-	if !checkUserID(taskData.UserID) {
-		log.Fatal("User Not Found")
-		return nil
+func CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error) {
+	if isExist, err := checkUserID(taskData.UserID); err != nil && !isExist {
+		return nil, fmt.Errorf("User Not Found", err)
 	}
 
 	taskData.ID = getNextTaskID()
 
-	insertResult, err := collection.InsertOne(context.TODO(), taskData)
+	insertResult, err := collection.InsertOne(ctx, taskData)
 	if err != nil {
-		log.Fatal(err)
-		return nil
+		return nil, fmt.Errorf("Error inserting task", err)
 	}
 
 	fmt.Println("Inserted document with ID:", insertResult.InsertedID)
 
-	return insertResult
+	return insertResult, err
 }
 
 func getNextTaskID() int64 {
-	opts := options.FindOne().SetSort(bson.D{{Key: "id", Value: -1}})
-
 	var lastTask Data
 
-	err := collection.FindOne(context.TODO(), bson.D{}, opts).Decode(&lastTask)
+	err := collection.FindOne(context.TODO(), bson.M{"id": -1}).Decode(&lastTask)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 1
 		}
 
-		log.Fatal(err)
+		log.Print(err)
 	}
 
 	return lastTask.ID + 1
 }
 
 func GetTaskByID(id int64) Data {
-	filter := map[string]interface{}{"id": id}
 	result := Data{}
 
-	err := collection.FindOne(context.TODO(), filter).Decode(&result)
+	err := collection.FindOne(context.TODO(), bson.M{"id": id}).Decode(&result)
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return Data{}
 	}
 
@@ -87,26 +86,28 @@ func GetTaskByID(id int64) Data {
 	return result
 }
 
-func GetAllTasks() []Data {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func GetAllTasks(ctx context.Context) []Data {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	var result []Data
 
 	cursor, err := collection.Find(context.TODO(), bson.M{})
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return nil
 	}
 
 	defer cursor.Close(ctx)
 
 	if err := cursor.All(ctx, &result); err != nil {
-		log.Fatal(err)
+		log.Print(err)
+		return nil
 	}
 
 	return result
 }
 
-func checkUserID(userID int64) bool {
+func checkUserID(userID int64) (bool, error) {
 	return grpc.CheckUserID(userID)
 }

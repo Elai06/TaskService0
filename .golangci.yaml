@@ -1,22 +1,22 @@
 linters:
   enable:
-      - dogsled
-      - err113
-      - exhaustive
-      - gci
-      - godot
-      - gofmt
-      - grouper
-      - lll
-      - mirror
-      - misspell
-      - mnd
-      - predeclared
-      - reassign
-      - revive
-      - tagliatelle
-      - unused
-      - wsl
+    - dogsled
+    - err113
+    - exhaustive
+    - gci
+    - godot
+    - gofmt
+    - grouper
+    - lll
+    - mirror
+    - misspell
+    - mnd
+    - predeclared
+    - reassign
+    - revive
+    - tagliatelle
+    - unused
+    - wsl
 
 run:
   timeout: 3m
@@ -31,7 +31,7 @@ issues:
   exclude-rules:
     - path: _test\.go
       linters:
-        - errcheck  # Игнорируем ошибки в тестах
+        - errcheck
     - path: "migrations/"
       linters:
-        - gofmt     # Отключаем gofmt для миграций
+        - gofmt    

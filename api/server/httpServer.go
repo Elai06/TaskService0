@@ -5,24 +5,22 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"time"
 
-	"TaskService/internal/factory"
+	"TaskService/internal/env"
+	"TaskService/internal/repository"
 	"github.com/gorilla/mux"
 )
 
 func StartServer() {
 	r := mux.NewRouter()
-
-	r.HandleFunc("/createTask", createTask).Methods("POST")
-	r.HandleFunc("/getTask", getTaskByID).Methods("GET")
-	r.HandleFunc("/getTasks", getAllTasks).Methods("GET")
-
+	r.HandleFunc("/createTask", createTask).Methods(http.MethodPost)
+	r.HandleFunc("/getTask", getTaskByID).Methods(http.MethodGet)
+	r.HandleFunc("/getTasks", getAllTasks).Methods(http.MethodGet)
 	server := &http.Server{
-		Addr:         ":8082",
+		Addr:         env.GetEnvString("PORT"),
 		Handler:      r,
-		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		ReadTimeout:  env.GetTimeDuration("READ_TIMEOUT"),
+		WriteTimeout: env.GetTimeDuration("WRITE_TIMEOUT"),
 	}
 
 	log.Printf("Starting server on port 8082")
@@ -46,7 +44,7 @@ func getTaskByID(writer http.ResponseWriter, request *http.Request) {
 		log.Fatal(writer, "id is not liquid")
 	}
 
-	taskData := factory.GetTaskByID(intID)
+	taskData := repository.GetTaskByID(intID)
 
 	encoderErr := json.NewEncoder(writer).Encode(taskData)
 	if err != nil {
@@ -57,15 +55,20 @@ func getTaskByID(writer http.ResponseWriter, request *http.Request) {
 }
 
 func createTask(w http.ResponseWriter, r *http.Request) {
-	taskData := factory.Data{}
+	taskData := repository.Data{}
 	err := json.NewDecoder(r.Body).Decode(&taskData)
 
 	if err != nil {
-		log.Fatal(err)
+		log.Print(err)
 		return
 	}
 
-	resultData := factory.CreateTask(taskData)
+	resultData, errTask := repository.CreateTask(r.Context(), taskData)
+
+	if errTask != nil {
+		log.Print(errTask)
+		return
+	}
 
 	log.Println("TaskCreated")
 
@@ -79,8 +82,8 @@ func createTask(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getAllTasks(writer http.ResponseWriter, _ *http.Request) {
-	err := json.NewEncoder(writer).Encode(factory.GetAllTasks())
+func getAllTasks(writer http.ResponseWriter, r *http.Request) {
+	err := json.NewEncoder(writer).Encode(repository.GetAllTasks(r.Context()))
 	if err != nil {
 		log.Fatal(err)
 	}
