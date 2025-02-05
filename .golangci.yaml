@@ -34,4 +34,4 @@ issues:
         - errcheck
     - path: "migrations/"
       linters:
-        - gofmt    
+        - gofmt

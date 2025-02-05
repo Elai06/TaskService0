@@ -9,10 +9,15 @@ import (
 
 func main() {
 	env.LoadEnv()
-	repository.ConnectToMongo()
-	server.StartServer()
-	grpcErr := grpc.ConnectGrpc()
 
+	repo := repository.NewTaskRepository("mongodb://localhost:27017")
+	srv := server.NewTaskHandler(*repo.Task)
+	srvErr := srv.StartServer()
+	if srvErr != nil {
+		print(srvErr)
+	}
+
+	grpcErr := grpc.ConnectGrpc()
 	if grpcErr != nil {
 		print(grpcErr)
 	}
