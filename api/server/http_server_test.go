@@ -84,19 +84,25 @@ func TestGetTaskByID(t *testing.T) {
 	tests := []struct {
 		name        string
 		taskID      int64
-		mockResult  repository.Data
+		setupMock   func()
 		expectedErr bool
 	}{
 		{
-			name:        "Success",
-			taskID:      1,
-			mockResult:  repository.Data{ID: 1, Title: "Test Task", UserID: 1, Description: "Test Description"},
+			name:   "Success",
+			taskID: 1,
+			setupMock: func() {
+				expectedResult := repository.Data{ID: 1, Title: "Test Task", UserID: 1, Description: "Test Description"}
+				mockRepo.EXPECT().GetTaskByID(gomock.Any(), gomock.Any()).Return(expectedResult, nil)
+			},
 			expectedErr: false,
 		},
 		{
-			name:        "Failure - Not Found",
-			taskID:      99,
-			mockResult:  repository.Data{},
+			name:   "Failure - Not Found",
+			taskID: 99,
+			setupMock: func() {
+				expectedResult := repository.Data{}
+				mockRepo.EXPECT().GetTaskByID(gomock.Any(), gomock.Any()).Return(expectedResult, fmt.Errorf("error some"))
+			},
 			expectedErr: true,
 		},
 	}
@@ -105,11 +111,8 @@ func TestGetTaskByID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/getTask?id="+strconv.FormatInt(tt.taskID, 10), nil)
 			w := httptest.NewRecorder()
-
-			if tt.expectedErr {
-				mockRepo.EXPECT().GetTaskByID(gomock.Any()).Return(tt.mockResult, fmt.Errorf("error some"))
-			} else {
-				mockRepo.EXPECT().GetTaskByID(gomock.Any()).Return(tt.mockResult, nil)
+			if tt.setupMock != nil {
+				tt.setupMock()
 			}
 
 			handler.getTaskByID(w, req)
@@ -134,24 +137,30 @@ func TestGetAllTasks(t *testing.T) {
 	handler := NewTaskHandler(mockRepo)
 	tests := []struct {
 		name        string
-		mockResult  []repository.Data
+		setupMock   func()
 		expectedErr bool
 		lenResult   int
 	}{
 		{
 			name: "Success",
-			mockResult: []repository.Data{
-				{ID: 1, Title: "Test Task", UserID: 1, Description: "Test Description"},
-				{ID: 2, Title: "Test Task", UserID: 1, Description: "Test Description"},
-				{ID: 3, Title: "Test Task", UserID: 1, Description: "Test Description"},
-				{ID: 4, Title: "Test Task", UserID: 1, Description: "Test Description"},
+			setupMock: func() {
+				expectedResult := []repository.Data{
+					{ID: 1, Title: "Test Task", UserID: 1, Description: "Test Description"},
+					{ID: 2, Title: "Test Task", UserID: 1, Description: "Test Description"},
+					{ID: 3, Title: "Test Task", UserID: 1, Description: "Test Description"},
+					{ID: 4, Title: "Test Task", UserID: 1, Description: "Test Description"},
+				}
+				mockRepo.EXPECT().GetAllTasks(gomock.Any()).Return(expectedResult, nil)
 			},
 			expectedErr: false,
 			lenResult:   4,
 		},
 		{
-			name:        "Failure - Not Found",
-			mockResult:  []repository.Data{},
+			name: "Failure - Not Found",
+			setupMock: func() {
+				var expectedResult []repository.Data
+				mockRepo.EXPECT().GetAllTasks(gomock.Any()).Return(expectedResult, fmt.Errorf("error some"))
+			},
 			expectedErr: true,
 			lenResult:   4,
 		},
@@ -161,20 +170,15 @@ func TestGetAllTasks(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/getAllTasks", nil)
 			w := httptest.NewRecorder()
-
-			if tt.expectedErr {
-				mockRepo.EXPECT().GetAllTasks(gomock.Any()).Return(tt.mockResult, fmt.Errorf("some error"))
-			} else {
-				mockRepo.EXPECT().GetAllTasks(gomock.Any()).Return(tt.mockResult, nil)
+			if tt.setupMock != nil {
+				tt.setupMock()
 			}
-
 			handler.getAllTasks(w, req)
 			var result []repository.Data
 			err := json.Unmarshal(w.Body.Bytes(), &result)
 			if tt.expectedErr {
 				assert.NotEqual(t, tt.lenResult, len(result), "expected and actual results do not match")
 				assert.Error(t, err)
-
 			} else {
 				assert.Equal(t, tt.lenResult, len(result), "expected and actual results do not match")
 				assert.NoError(t, err)
