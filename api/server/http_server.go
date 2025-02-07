@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -36,38 +37,30 @@ func (th *TaskHandler) StartServer() error {
 		ReadTimeout:  env.GetTimeDuration("READ_TIMEOUT"),
 		WriteTimeout: env.GetTimeDuration("WRITE_TIMEOUT"),
 	}
-
 	log.Print("Starting server on port")
-
 	err := server.ListenAndServe()
 	if err != nil {
-		log.Print(err, "Error starting server on port", env.GetEnvString("PORT"))
-		return err
+		return fmt.Errorf("error starting server on port: %s", env.GetEnvString("PORT"))
 	}
-
-	return err
+	return nil
 }
 
 func (th *TaskHandler) createTask(w http.ResponseWriter, r *http.Request) {
 	taskData := repository.Data{}
-
 	err := json.NewDecoder(r.Body).Decode(&taskData)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(err)
 		return
 	}
-
 	resultData, errTask := th.repo.CreateTask(r.Context(), taskData)
-
 	if errTask != nil {
 		log.Print(errTask)
 		return
 	}
-
 	var resultMessage taskResult
 	resultMessage.Result = resultData
 	resultMessage.Message = "Task Created"
-
 	errEncoder := json.NewEncoder(w).Encode(&resultMessage)
 	if errEncoder != nil {
 		log.Print(errEncoder)
@@ -76,13 +69,16 @@ func (th *TaskHandler) createTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (th *TaskHandler) getAllTasks(writer http.ResponseWriter, r *http.Request) {
-	result, repoErr := th.repo.GetAllTasks(r.Context())
+	ctx := r.Context()
+	result, repoErr := th.repo.GetAllTasks(ctx)
 	if repoErr != nil {
 		log.Print(repoErr)
+		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	err := json.NewEncoder(writer).Encode(result)
 	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
 		log.Print(err)
 		return
 	}
@@ -94,14 +90,12 @@ func (th *TaskHandler) getTaskByID(writer http.ResponseWriter, request *http.Req
 		log.Print(writer, "Failed to get", id)
 		return
 	}
-
 	intID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		log.Print(writer, "Failed to parse int", err)
 		return
 	}
-
-	taskData, err := th.repo.GetTaskByID(intID)
+	taskData, err := th.repo.GetTaskByID(request.Context(), intID)
 	if err != nil {
 		log.Print(err)
 		return

@@ -12,6 +12,7 @@ func main() {
 
 	repo := repository.NewTaskRepository("mongodb://localhost:27017")
 	srv := server.NewTaskHandler(*repo.Task)
+
 	srvErr := srv.StartServer()
 	if srvErr != nil {
 		print(srvErr)

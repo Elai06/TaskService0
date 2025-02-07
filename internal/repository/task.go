@@ -27,7 +27,7 @@ type Data struct {
 
 type TaskServiceInterface interface {
 	CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error)
-	GetTaskByID(id int64) (Data, error)
+	GetTaskByID(ctx context.Context, id int64) (Data, error)
 	GetAllTasks(ctx context.Context) ([]Data, error)
 }
 
@@ -52,7 +52,7 @@ func (t *TaskRepository) CreateTask(ctx context.Context, taskData Data) (*mongo.
 		return nil, fmt.Errorf("User Not Found %s", err)
 	}
 
-	taskData.ID = t.getNextTaskID()
+	taskData.ID = t.getNextTaskID(ctx)
 
 	insertResult, err := t.getCollection().InsertOne(ctx, taskData)
 	if err != nil {
@@ -62,7 +62,6 @@ func (t *TaskRepository) CreateTask(ctx context.Context, taskData Data) (*mongo.
 	fmt.Println("Inserted document with ID:", insertResult.InsertedID)
 
 	var nums []int
-
 	for _, i := range nums {
 		if i%2 != 0 {
 		}
@@ -71,10 +70,10 @@ func (t *TaskRepository) CreateTask(ctx context.Context, taskData Data) (*mongo.
 	return insertResult, nil
 }
 
-func (t *TaskRepository) getNextTaskID() int64 {
+func (t *TaskRepository) getNextTaskID(ctx context.Context) int64 {
 	var lastTask Data
 
-	err := t.getCollection().FindOne(context.TODO(), bson.M{"id": -1}).Decode(&lastTask)
+	err := t.getCollection().FindOne(ctx, bson.M{"id": -1}).Decode(&lastTask)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 1
@@ -86,10 +85,10 @@ func (t *TaskRepository) getNextTaskID() int64 {
 	return lastTask.ID + 1
 }
 
-func (t *TaskRepository) GetTaskByID(id int64) (Data, error) {
+func (t *TaskRepository) GetTaskByID(ctx context.Context, id int64) (Data, error) {
 	result := Data{}
 
-	err := t.getCollection().FindOne(context.TODO(), bson.M{"id": id}).Decode(&result)
+	err := t.getCollection().FindOne(ctx, bson.M{"id": id}).Decode(&result)
 	if err != nil {
 		log.Print(err)
 		return Data{}, err

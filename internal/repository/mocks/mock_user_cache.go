@@ -67,16 +67,16 @@ func (mr *MockTaskServiceInterfaceMockRecorder) GetAllTasks(arg0 interface{}) *g
 }
 
 // GetTaskByID mocks base method.
-func (m *MockTaskServiceInterface) GetTaskByID(arg0 int64) (repository.Data, error) {
+func (m *MockTaskServiceInterface) GetTaskByID(arg0 context.Context, arg1 int64) (repository.Data, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTaskByID", arg0)
+	ret := m.ctrl.Call(m, "GetTaskByID", arg0, arg1)
 	ret0, _ := ret[0].(repository.Data)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTaskByID indicates an expected call of GetTaskByID.
-func (mr *MockTaskServiceInterfaceMockRecorder) GetTaskByID(arg0 interface{}) *gomock.Call {
+func (mr *MockTaskServiceInterfaceMockRecorder) GetTaskByID(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskByID", reflect.TypeOf((*MockTaskServiceInterface)(nil).GetTaskByID), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTaskByID", reflect.TypeOf((*MockTaskServiceInterface)(nil).GetTaskByID), arg0, arg1)
 }
