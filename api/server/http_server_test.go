@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/brianvoe/gofakeit/v7"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,41 +23,57 @@ func TestCreateTask(t *testing.T) {
 
 	defer ctrl.Finish()
 
-	mockInterface := mocks.NewMockTaskServiceInterface(ctrl)
+	mockInterface := mocks.NewMockITaskService(ctrl)
 	mockRepo := NewTaskHandler(mockInterface)
+	fakeTaskData := repository.Data{
+		UserID:      gofakeit.Int64(),
+		Title:       gofakeit.Sentence(3),
+		ID:          gofakeit.Int64(),
+		Description: gofakeit.Paragraph(1, 2, 3, " "),
+	}
 
 	tests := []struct {
 		name           string
-		inputData      repository.Data
+		expectedData   repository.Data
 		expectedResult taskResult
+		inputData      repository.Data
+		setupMock      func()
 		expectedError  bool
 	}{
 		{
-			name:           "Success",
-			inputData:      repository.Data{UserID: 1, Title: "Test", ID: 1, Description: "test"},
-			expectedResult: taskResult{Message: "Task Created", Result: (*mongo.InsertOneResult)(nil)},
-			expectedError:  false,
+			name: "Success",
+			expectedResult: taskResult{Message: "Task Created", Result: &mongo.InsertOneResult{
+				InsertedID: "",
+			}},
+			inputData: fakeTaskData,
+			setupMock: func() {
+				mockInterface.EXPECT().CreateTask(gomock.Any(), fakeTaskData).Return(&mongo.InsertOneResult{InsertedID: ""},
+				nil)
+			},
+			expectedError: false,
 		},
 		{
-			name:           "Fail",
-			inputData:      repository.Data{UserID: 1, Title: "Test", ID: 1, Description: "test"},
+			name:         "Fail",
+			expectedData: repository.Data{UserID: 1, Title: "Test", ID: 1, Description: "test"},
+			inputData:    repository.Data{UserID: 1, Title: "Test", ID: 1, Description: "test"},
+
 			expectedResult: taskResult{},
-			expectedError:  true,
+			setupMock: func() {
+				mockInterface.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("error some"))
+			},
+			expectedError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		reqBody, _ := json.Marshal(tt.inputData)
 		t.Run(tt.name, func(t *testing.T) {
-
-			if tt.expectedError {
-				mockInterface.EXPECT().CreateTask(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("error some"))
-			} else {
-				mockInterface.EXPECT().CreateTask(gomock.Any(), gomock.Any())
-			}
-
 			req := httptest.NewRequest(http.MethodPost, "/createTask", bytes.NewReader(reqBody))
 			rec := httptest.NewRecorder()
+
+			if tt.setupMock != nil {
+				tt.setupMock()
+			}
 
 			mockRepo.createTask(rec, req)
 
@@ -78,7 +95,7 @@ func TestGetTaskByID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	mockRepo := mocks.NewMockTaskServiceInterface(ctrl)
+	mockRepo := mocks.NewMockITaskService(ctrl)
 	handler := NewTaskHandler(mockRepo)
 
 	tests := []struct {
@@ -110,14 +127,14 @@ func TestGetTaskByID(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, "/getTask?id="+strconv.FormatInt(tt.taskID, 10), nil)
-			w := httptest.NewRecorder()
+			rec := httptest.NewRecorder()
 			if tt.setupMock != nil {
 				tt.setupMock()
 			}
 
-			handler.getTaskByID(w, req)
+			handler.getTaskByID(rec, req)
 			result := repository.Data{}
-			err := json.Unmarshal(w.Body.Bytes(), &result)
+			err := json.Unmarshal(rec.Body.Bytes(), &result)
 
 			if tt.expectedErr {
 				assert.NotEqual(t, tt.taskID, result.ID, "expected and actual results do not match")
@@ -133,7 +150,7 @@ func TestGetTaskByID(t *testing.T) {
 func TestGetAllTasks(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
-	mockRepo := mocks.NewMockTaskServiceInterface(ctrl)
+	mockRepo := mocks.NewMockITaskService(ctrl)
 	handler := NewTaskHandler(mockRepo)
 	tests := []struct {
 		name        string
@@ -204,7 +221,7 @@ func TestStartServer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo := mocks.NewMockTaskServiceInterface(ctrl)
+			mockRepo := mocks.NewMockITaskService(ctrl)
 			th := NewTaskHandler(mockRepo)
 			_, cancel := context.WithCancel(context.Background())
 			defer cancel()

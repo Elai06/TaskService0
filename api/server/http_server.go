@@ -19,10 +19,10 @@ type taskResult struct {
 }
 
 type TaskHandler struct {
-	repo repository.TaskServiceInterface
+	repo repository.ITaskService
 }
 
-func NewTaskHandler(repo repository.TaskServiceInterface) *TaskHandler {
+func NewTaskHandler(repo repository.ITaskService) *TaskHandler {
 	return &TaskHandler{repo: repo}
 }
 
@@ -55,6 +55,7 @@ func (th *TaskHandler) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 	resultData, errTask := th.repo.CreateTask(r.Context(), taskData)
 	if errTask != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(errTask)
 		return
 	}
@@ -63,45 +64,50 @@ func (th *TaskHandler) createTask(w http.ResponseWriter, r *http.Request) {
 	resultMessage.Message = "Task Created"
 	errEncoder := json.NewEncoder(w).Encode(&resultMessage)
 	if errEncoder != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(errEncoder)
 		return
 	}
 }
 
-func (th *TaskHandler) getAllTasks(writer http.ResponseWriter, r *http.Request) {
+func (th *TaskHandler) getAllTasks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	result, repoErr := th.repo.GetAllTasks(ctx)
 	if repoErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(repoErr)
-		writer.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	err := json.NewEncoder(writer).Encode(result)
+	err := json.NewEncoder(w).Encode(result)
 	if err != nil {
-		writer.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(err)
 		return
 	}
 }
 
-func (th *TaskHandler) getTaskByID(writer http.ResponseWriter, request *http.Request) {
+func (th *TaskHandler) getTaskByID(w http.ResponseWriter, request *http.Request) {
 	id := request.URL.Query().Get("id")
 	if id == "" {
-		log.Print(writer, "Failed to get", id)
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Print(w, "Failed to get", id)
 		return
 	}
 	intID, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
-		log.Print(writer, "Failed to parse int", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Print(w, "Failed to parse int", err)
 		return
 	}
 	taskData, err := th.repo.GetTaskByID(request.Context(), intID)
 	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(err)
 		return
 	}
-	encoderErr := json.NewEncoder(writer).Encode(taskData)
+	encoderErr := json.NewEncoder(w).Encode(taskData)
 	if encoderErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(encoderErr)
 		return
 	}

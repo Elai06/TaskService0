@@ -23,9 +23,9 @@ type Data struct {
 	UserID      int64  `json:"userId"`
 }
 
-//go:generate mockgen -destination=mocks/mock_user_cache.go -package=mocks TaskService/internal/repository TaskServiceInterface
+//go:generate mockgen -destination=mocks/mock_user_cache.go -package=mocks TaskService/internal/repository ITaskService
 
-type TaskServiceInterface interface {
+type ITaskService interface {
 	CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error)
 	GetTaskByID(ctx context.Context, id int64) (Data, error)
 	GetAllTasks(ctx context.Context) ([]Data, error)
@@ -33,7 +33,7 @@ type TaskServiceInterface interface {
 
 type TaskRepository struct {
 	client *mongo.Client
-	Task   *TaskServiceInterface
+	Task   *ITaskService
 }
 
 func NewTaskRepository(connectionString string) *TaskRepository {
@@ -44,7 +44,7 @@ func NewTaskRepository(connectionString string) *TaskRepository {
 		log.Print(err)
 	}
 
-	return &TaskRepository{client: newClient, Task: new(TaskServiceInterface)}
+	return &TaskRepository{client: newClient, Task: new(ITaskService)}
 }
 
 func (t *TaskRepository) CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error) {
@@ -60,13 +60,6 @@ func (t *TaskRepository) CreateTask(ctx context.Context, taskData Data) (*mongo.
 	}
 
 	fmt.Println("Inserted document with ID:", insertResult.InsertedID)
-
-	var nums []int
-	for _, i := range nums {
-		if i%2 != 0 {
-		}
-	}
-
 	return insertResult, nil
 }
 
