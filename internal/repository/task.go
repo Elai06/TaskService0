@@ -16,8 +16,6 @@ import (
 const tasks = "tasks"
 const TasksService = "TasksService"
 
-var collection *mongo.Collection
-
 type Data struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
@@ -25,42 +23,50 @@ type Data struct {
 	UserID      int64  `json:"userId"`
 }
 
-func ConnectToMongo() {
-	url := "mongodb://localhost:27017"
-	clientOptions := options.Client().ApplyURI(url)
+//go:generate mockgen -destination=mocks/mock_user_cache.go -package=mocks TaskService/internal/repository ITaskService
 
-	client, err := mongo.Connect(context.TODO(), clientOptions)
-	if err != nil {
-		log.Print(err)
-		return
-	}
-
-	fmt.Println("Connected to MongoDB!")
-
-	collection = client.Database(TasksService).Collection(tasks)
+type ITaskService interface {
+	CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error)
+	GetTaskByID(ctx context.Context, id int64) (Data, error)
+	GetAllTasks(ctx context.Context) ([]Data, error)
 }
 
-func CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error) {
-	if isExist, err := checkUserID(taskData.UserID); err != nil && !isExist {
-		return nil, fmt.Errorf("User Not Found", err)
+type TaskRepository struct {
+	client *mongo.Client
+	Task   *ITaskService
+}
+
+func NewTaskRepository(connectionString string) *TaskRepository {
+	clientOptions := options.Client().ApplyURI(connectionString)
+
+	newClient, err := mongo.Connect(context.TODO(), clientOptions)
+	if err != nil {
+		log.Print(err)
 	}
 
-	taskData.ID = getNextTaskID()
+	return &TaskRepository{client: newClient, Task: new(ITaskService)}
+}
 
-	insertResult, err := collection.InsertOne(ctx, taskData)
+func (t *TaskRepository) CreateTask(ctx context.Context, taskData Data) (*mongo.InsertOneResult, error) {
+	if isExist, err := checkUserID(taskData.UserID); err != nil && !isExist {
+		return nil, fmt.Errorf("User Not Found %s", err)
+	}
+
+	taskData.ID = t.getNextTaskID(ctx)
+
+	insertResult, err := t.getCollection().InsertOne(ctx, taskData)
 	if err != nil {
-		return nil, fmt.Errorf("Error inserting task", err)
+		return nil, fmt.Errorf("Error inserting task %s", err)
 	}
 
 	fmt.Println("Inserted document with ID:", insertResult.InsertedID)
-
-	return insertResult, err
+	return insertResult, nil
 }
 
-func getNextTaskID() int64 {
+func (t *TaskRepository) getNextTaskID(ctx context.Context) int64 {
 	var lastTask Data
 
-	err := collection.FindOne(context.TODO(), bson.M{"id": -1}).Decode(&lastTask)
+	err := t.getCollection().FindOne(ctx, bson.M{"id": -1}).Decode(&lastTask)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {
 			return 1
@@ -72,42 +78,46 @@ func getNextTaskID() int64 {
 	return lastTask.ID + 1
 }
 
-func GetTaskByID(id int64) Data {
+func (t *TaskRepository) GetTaskByID(ctx context.Context, id int64) (Data, error) {
 	result := Data{}
 
-	err := collection.FindOne(context.TODO(), bson.M{"id": id}).Decode(&result)
+	err := t.getCollection().FindOne(ctx, bson.M{"id": id}).Decode(&result)
 	if err != nil {
 		log.Print(err)
-		return Data{}
+		return Data{}, err
 	}
 
 	fmt.Printf("Found document: %+v\n", result)
 
-	return result
+	return result, nil
 }
 
-func GetAllTasks(ctx context.Context) []Data {
+func (t *TaskRepository) GetAllTasks(ctx context.Context) ([]Data, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 
 	var result []Data
 
-	cursor, err := collection.Find(context.TODO(), bson.M{})
+	cursor, err := t.getCollection().Find(context.TODO(), bson.M{})
 	if err != nil {
 		log.Print(err)
-		return nil
+		return nil, err
 	}
 
 	defer cursor.Close(ctx)
 
 	if err := cursor.All(ctx, &result); err != nil {
 		log.Print(err)
-		return nil
+		return nil, err
 	}
 
-	return result
+	return result, nil
 }
 
 func checkUserID(userID int64) (bool, error) {
 	return grpc.CheckUserID(userID)
+}
+
+func (t *TaskRepository) getCollection() *mongo.Collection {
+	return t.client.Database(TasksService).Collection(tasks)
 }
